@@ -1,53 +1,68 @@
 //create web server
-//express is the framework for node.js
-//body-parser is the middleware to handle post body request
-//mongoose is the middleware to connect to mongodb
-//session is the middleware to handle session
-//connect-mongo is the middleware to store session into mongodb
-//passport is the middleware for user authentication
-//passport-local is the middleware for user authentication using username and password
-//multer is the middleware to handle multipart/form-data
 var express = require('express');
-var router = express.Router();
+var app = express();
 var bodyParser = require('body-parser');
-var mongoose = require('mongoose');
-var session = require('express-session');
-var MongoStore = require('connect-mongo')(session);
-var passport = require('passport');
-var LocalStrategy = require('passport-local').Strategy;
-var multer = require('multer');
-var fs = require('fs');
-var path = require('path');
+var mysql = require('mysql');
+var connection = mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: '123456',
+    database: 'comments'
+});
+connection.connect();
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-//connect to mongodb
-mongoose.connect('mongodb://localhost/comments');
-var db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error'));
-db.once('open', function(callback) {
-    console.log('Connection Succeeded');
+//get all comments
+app.get('/comments', function (req, res) {
+    connection.query('SELECT * FROM comments', function (error, results, fields) {
+        if (error) throw error;
+        res.json(results);
+    });
 });
 
-//define comment schema
-var commentSchema = mongoose.Schema({
-    name: String,
-    email: String,
-    message: String,
-    created_at: Date
+//get one comment
+app.get('/comments/:id', function (req, res) {
+    connection.query('SELECT * FROM comments WHERE id = ?', [req.params.id], function (error, results, fields) {
+        if (error) throw error;
+        res.json(results);
+    });
 });
-//define comment model
-var Comment = mongoose.model('Comment', commentSchema);
 
-//define user schema
-var userSchema = mongoose.Schema({
-    username: String,
-    password: String,
-    created_at: Date,
-    updated_at: Date
+//create a comment
+app.post('/comments', function (req, res) {
+    var comment = {
+        name: req.body.name,
+        comment: req.body.comment,
+        created_at: new Date()
+    };
+    connection.query('INSERT INTO comments SET ?', comment, function (error, results, fields) {
+        if (error) throw error;
+        res.json(results);
+    });
 });
-//define user model
-var User = mongoose.model('User', userSchema);
 
-//define post schema
-var postSchema = mongoose.Schema({
-    title: String,
-    content: String,
+//update a comment
+app.put('/comments/:id', function (req, res) {
+    var comment = {
+        name: req.body.name,
+        comment: req.body.comment
+    };
+    connection.query('UPDATE comments SET ? WHERE id = ?', [comment, req.params.id], function (error, results, fields) {
+        if (error) throw error;
+        res.json(results);
+    });
+});
+
+//delete a comment
+app.delete('/comments/:id', function (req, res) {
+    connection.query('DELETE FROM comments WHERE id = ?', [req.params.id], function (error, results, fields) {
+        if (error) throw error;
+        res.json(results);
+    });
+});
+
+//start server
+app.listen(3000, function () {
+    console.log('Server running at port 3000');
+});
